@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TDAi — Trading Dream AI</title>
+  <meta name="description" content="TDAi analyzes market conditions, filters setups, assesses risk, and helps you execute trades with discipline. Analyze. Decide. Execute." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['"Space Grotesk"', 'sans-serif'],
+            body: ['Inter', 'sans-serif'],
+            mono: ['"IBM Plex Mono"', 'monospace'],
+          },
+          colors: {
+            ink: '#050608', panel: '#0b0d11', edge: '#1a1e26', mute: '#5c636e',
+            accent: '#2e7dff', accentSoft: '#7db0ff',
+            pos: '#1fbf75', neg: '#ff4d5e', violet: '#a855f7',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { background: #050608; }
+    .grid-bg {
+      background-image:
+        linear-gradient(to right, rgba(46,125,255,0.06) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(46,125,255,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+    }
+    .glow { box-shadow: 0 0 0 1px rgba(46,125,255,0.15), 0 0 40px -12px rgba(46,125,255,0.35); }
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s cubic-bezier(.2,.7,.2,1), transform .7s cubic-bezier(.2,.7,.2,1); }
+    .reveal.in { opacity: 1; transform: none; }
+    /* Brain pulse */
+    .brain-wrap { position: relative; }
+    .brain-img { animation: brainPulse 3.2s ease-in-out infinite; }
+    @keyframes brainPulse {
+      0%,100% { filter: drop-shadow(0 0 14px rgba(46,125,255,0.45)) drop-shadow(0 0 40px rgba(46,125,255,0.20)); }
+      50%     { filter: drop-shadow(0 0 26px rgba(125,176,255,0.75)) drop-shadow(0 0 70px rgba(168,85,247,0.30)); }
+    }
+    .halo { animation: halo 3.2s ease-in-out infinite; }
+    @keyframes halo { 0%,100% { opacity:.35; transform:scale(1);} 50% { opacity:.7; transform:scale(1.06);} }
+    .tick { animation: ticker 22s linear infinite; }
+    @keyframes ticker { from { transform: translateX(0);} to { transform: translateX(-50%);} }
+    /* Engine card icons */
+    .eicon svg { overflow: visible; }
+    .engine-card:hover .eicon { filter: drop-shadow(0 0 8px rgba(46,125,255,0.6)); }
+    .engine-card .eicon [class] { transition: transform .5s ease, opacity .4s ease, stroke-dashoffset .8s ease; transform-origin: center; }
+    /* confluence: circles converge */
+    .engine-card:hover .g1 { transform: translate(3px,2px); }
+    .engine-card:hover .g2 { transform: translate(-3px,2px); }
+    .engine-card:hover .g3 { transform: translateY(-3px); }
+    /* probability bell draws */
+    .bell { stroke-dasharray: 60; stroke-dashoffset: 0; }
+    .engine-card:hover .bell { animation: draw 1s ease; }
+    @keyframes draw { from { stroke-dashoffset: 60; } to { stroke-dashoffset: 0; } }
+    /* regime wave shifts up */
+    .engine-card:hover .wave { transform: translateY(-3px); }
+    /* similarity lens pulse */
+    .engine-card:hover .lens { transform: scale(1.12); }
+    .engine-card:hover .plus { opacity: 0; }
+    /* SMC blocks nudge */
+    .engine-card:hover .ob:first-of-type { transform: translateY(2px); }
+    .engine-card:hover .ob:last-of-type { transform: translateY(-2px); }
+    /* flask bubbles */
+    .bub { opacity: 0; }
+    .engine-card:hover .bub { animation: rise 1.2s ease-in-out infinite; }
+    @keyframes rise { 0% { opacity:0; transform: translateY(2px);} 50% { opacity:1;} 100% { opacity:0; transform: translateY(-4px);} }
+    /* backtest hand sweeps */
+    .engine-card:hover .hand { transform: rotate(40deg); transform-origin: 20px 20px; }
+    /* shield check draws */
+    .check { stroke-dasharray: 24; }
+    .engine-card:hover .check { animation: draw2 .7s ease forwards; }
+    @keyframes draw2 { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+    /* gauge needle swings */
+    .engine-card:hover .needle { transform: rotate(-30deg); transform-origin: 20px 20px; }
+    /* bolt flashes */
+    .engine-card:hover .bolt { fill-opacity: 0.6; }
+    @media (prefers-reduced-motion: reduce) {
+      .engine-card .eicon [class] { transition: none !important; animation: none !important; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity:1; transform:none; transition:none; }
+      .brain-img, .halo, .tick { animation: none; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+<body class="font-body text-slate-300 antialiased selection:bg-accent/30">
+
+  <!-- NAV -->
+  <header class="fixed top-0 inset-x-0 z-50 border-b border-edge/60 backdrop-blur-md bg-ink/70">
+    <nav class="mx-auto max-w-6xl px-5 h-24 flex items-center justify-between">
+      <a href="#top" class="flex items-center gap-3 group">
+        <img src="brain_icon.png" alt="TDAi brain logo" class="w-14 h-14 object-contain" />
+        <span class="flex items-baseline gap-2">
+          <span class="font-display font-bold text-white tracking-tight text-4xl sm:text-5xl leading-none">TD<span class="text-accent">Ai</span></span>
+          <span class="hidden sm:inline font-body text-sm text-slate-400 leading-none">Trading made easy</span>
+        </span>
+      </a>
+      <div class="hidden md:flex items-center gap-8 text-sm text-slate-400">
+        <a href="#credibility" class="hover:text-white transition-colors">Credibility</a>
+        <a href="#how-it-works" class="hover:text-white transition-colors">How it works</a>
+        <a href="#how-to-use" class="hover:text-white transition-colors">How to use</a>
+        <a href="https://t.me/TDAi_abot" target="_blank" rel="noopener" class="rounded-md bg-accent text-white font-medium px-4 py-2 hover:bg-accentSoft transition-colors">Open Telegram bot</a>
+      </div>
+      <button id="menuBtn" class="md:hidden w-10 h-10 grid place-items-center rounded-md border border-edge" aria-label="Open menu" aria-expanded="false">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+      </button>
+    </nav>
+    <div id="mobileMenu" class="md:hidden hidden border-t border-edge bg-ink px-5 py-4 space-y-3 text-sm">
+      <a href="#credibility" class="block py-1.5 text-slate-300 hover:text-white">Credibility</a>
+      <a href="#how-it-works" class="block py-1.5 text-slate-300 hover:text-white">How it works</a>
+      <a href="#how-to-use" class="block py-1.5 text-slate-300 hover:text-white">How to use</a>
+      <a href="https://t.me/TDAi_abot" target="_blank" rel="noopener" class="block mt-1 rounded-md bg-accent text-white font-medium px-4 py-2.5 text-center">Open Telegram bot</a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section id="top" class="relative pt-36 md:pt-44 pb-20 overflow-hidden">
+    <div class="absolute inset-0 grid-bg [mask-image:radial-gradient(ellipse_at_top,black,transparent_75%)]"></div>
+    <canvas id="net" class="absolute inset-0 w-full h-full opacity-60"></canvas>
+    <div class="relative mx-auto max-w-6xl px-5">
+      <div class="grid lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-8 items-center">
+        <div>
+          <div class="inline-flex items-center gap-2 rounded-full border border-edge bg-panel/60 px-3 py-1 text-xs font-mono text-slate-400 mb-6">
+            <span class="w-1.5 h-1.5 rounded-full bg-pos animate-pulse"></span>
+            Decision engine online
+          </div>
+          <h1 class="font-display font-bold text-white text-4xl sm:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
+            Trade the plan,<br class="hidden sm:block" /> not the impulse.
+          </h1>
+          <p class="mt-5 font-display text-lg sm:text-xl tracking-tight">
+            <span class="text-accent">Analyze.</span> <span class="text-pos">Decide.</span> <span class="text-violet">Execute.</span>
+          </p>
+          <p class="mt-5 text-base sm:text-lg text-slate-400 max-w-xl leading-relaxed">
+            TDAi reads market conditions, filters out weak setups, sizes your risk, and holds you to a disciplined process — so every entry is a decision, not a reaction.
+          </p>
+          <div class="mt-8 flex flex-col sm:flex-row gap-3">
+            <a href="https://t.me/TDAi_abot" target="_blank" rel="noopener" class="rounded-md bg-accent text-white font-medium px-6 py-3 text-center hover:bg-accentSoft transition-colors glow">Open Telegram bot</a>
+            <a href="#how-it-works" class="rounded-md border border-edge text-slate-200 px-6 py-3 text-center hover:border-accent/50 hover:text-white transition-colors">See how it decides</a>
+          </div>
+          <dl class="mt-10 grid grid-cols-3 gap-4 max-w-md border-t border-edge pt-6">
+            <div><dt class="text-xs text-mute font-mono">Data tested</dt><dd class="font-display text-2xl text-white mt-1" data-count="5" data-suffix="y">0</dd></div>
+            <div><dt class="text-xs text-mute font-mono">Decision engines</dt><dd class="font-display text-2xl text-white mt-1" data-count="10">0</dd></div>
+            <div><dt class="text-xs text-mute font-mono">Rules enforced</dt><dd class="font-display text-2xl text-white mt-1" data-count="100" data-suffix="%">0</dd></div>
+          </dl>
+        </div>
+
+        <!-- Animated brain + checklist -->
+        <div class="relative reveal">
+          <div class="brain-wrap grid place-items-center py-4">
+            <div class="halo absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-accent/20 blur-3xl"></div>
+            <img src="brain_cut.png" alt="TDAi neural decision engine" class="brain-img relative w-full max-w-md sm:max-w-lg object-contain" />
+          </div>
+          <div class="mt-4 rounded-xl border border-edge bg-panel/80 backdrop-blur p-5 glow">
+            <div class="flex items-center justify-between mb-3">
+              <span class="font-mono text-xs text-slate-500">XAUUSD · 15m</span>
+              <span class="font-mono text-xs px-2 py-0.5 rounded bg-pos/15 text-pos border border-pos/30">SETUP: VALID</span>
+            </div>
+            <div class="space-y-2.5 font-mono text-xs">
+              <div class="flex items-center justify-between"><span class="text-slate-400">Confluence score</span><span class="text-pos">4 / 5</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-400">Probability edge</span><span class="text-pos">68%</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-400">Risk / reward</span><span class="text-pos">2.4R</span></div>
+              <div class="flex items-center justify-between"><span class="text-slate-400">Daily loss limit</span><span class="text-slate-300">within</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ticker -->
+    <div class="relative mt-16 border-y border-edge overflow-hidden py-3">
+      <div class="tick flex gap-8 whitespace-nowrap font-mono text-xs text-slate-500 w-max">
+        <span>XAUUSD +0.30%</span><span>EURUSD +0.08%</span><span>BTCUSD −1.10%</span><span>NAS100 +0.61%</span><span>US30 +0.42%</span><span>GBPUSD +0.14%</span><span>USOIL −0.75%</span><span>SPX +0.38%</span>
+        <span>XAUUSD +0.30%</span><span>EURUSD +0.08%</span><span>BTCUSD −1.10%</span><span>NAS100 +0.61%</span><span>US30 +0.42%</span><span>GBPUSD +0.14%</span><span>USOIL −0.75%</span><span>SPX +0.38%</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- CREDIBILITY -->
+  <section id="credibility" class="py-24 border-b border-edge">
+    <div class="mx-auto max-w-6xl px-5">
+      <div class="grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
+        <div class="max-w-2xl reveal">
+          <p class="font-mono text-sm text-accent mb-3">TDAi Credibility &amp; Validation</p>
+          <h2 class="font-display text-white text-3xl sm:text-4xl font-semibold tracking-tight">Built on data. Tested through market cycles.</h2>
+          <p class="mt-5 text-slate-400 leading-relaxed">TDAi is developed around systematic testing rather than assumptions or isolated market examples. Its trading parameters, decision rules, risk filters, and execution logic are evaluated against up to five years of historical market data to determine how the system behaves across different market conditions.</p>
+        </div>
+
+        <!-- Interactive backtest chart -->
+        <div class="reveal rounded-2xl border border-edge bg-panel/40 p-5 glow" id="btWrap">
+          <div class="flex items-center justify-between mb-3">
+            <span class="font-mono text-xs text-slate-500">5-YEAR BACKTEST</span>
+            <span class="font-mono text-xs text-slate-400" id="btRange">2021 – 2026</span>
+          </div>
+          <svg id="btChart" viewBox="0 0 480 240" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Animated backtest equity curve across market cycles">
+            <defs>
+              <linearGradient id="btFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#2e7dff" stop-opacity="0.35"/><stop offset="100%" stop-color="#2e7dff" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <!-- gridlines -->
+            <g stroke="#12151b" stroke-width="1">
+              <line x1="30" y1="40" x2="470" y2="40"/><line x1="30" y1="90" x2="470" y2="90"/>
+              <line x1="30" y1="140" x2="470" y2="140"/><line x1="30" y1="190" x2="470" y2="190"/>
+            </g>
+            <!-- year ticks -->
+            <g fill="#3a414d" font-family="'IBM Plex Mono',monospace" font-size="9" text-anchor="middle">
+              <text x="30" y="208">'21</text><text x="140" y="208">'22</text><text x="250" y="208">'23</text><text x="360" y="208">'24</text><text x="470" y="208">'26</text>
+            </g>
+            <path id="btArea" d="" fill="url(#btFill)"/>
+            <path id="btLine" d="" fill="none" stroke="#2e7dff" stroke-width="2.5" stroke-linejoin="round"/>
+            <circle id="btDot" r="4" fill="#7db0ff"/>
+            <!-- regime shade labels appear on hover -->
+            <g id="btTip" opacity="0">
+              <rect id="btTipBox" x="0" y="0" width="120" height="34" rx="6" fill="#0b0d11" stroke="#2e7dff" stroke-opacity="0.4"/>
+              <text id="btTipT1" x="10" y="15" fill="#cbd5e1" font-family="'IBM Plex Mono',monospace" font-size="10"></text>
+              <text id="btTipT2" x="10" y="28" fill="#7db0ff" font-family="'IBM Plex Mono',monospace" font-size="10"></text>
+            </g>
+          </svg>
+          <div class="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-edge">
+            <div><p class="font-mono text-xs text-mute">Data window</p><p class="font-display text-white text-lg mt-0.5" data-count="5" data-suffix="y">0</p></div>
+            <div><p class="font-mono text-xs text-mute">Market regimes</p><p class="font-display text-white text-lg mt-0.5">Bull · Bear · Range</p></div>
+            <div><p class="font-mono text-xs text-mute">Params tested</p><p class="font-display text-white text-lg mt-0.5" data-count="8" data-suffix="+">0</p></div>
+          </div>
+          <p class="mt-3 text-[11px] text-mute font-mono">Illustrative — hover the curve to inspect. Past results don't guarantee future performance.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" class="py-24 border-b border-edge">
+    <div class="mx-auto max-w-6xl px-5">
+      <div class="grid lg:grid-cols-[1fr_1.1fr] gap-10 items-center">
+        <div class="max-w-2xl reveal">
+          <p class="font-mono text-sm text-accent mb-3">How it works</p>
+          <h2 class="font-display text-white text-3xl sm:text-4xl font-semibold tracking-tight">The engines behind every decision</h2>
+          <p class="mt-4 text-slate-400">Ten specialised engines run on each candidate trade — analysis, validation, then risk and execution.</p>
+        </div>
+        <!-- Interactive decision pipeline -->
+        <div class="reveal rounded-2xl border border-edge bg-panel/40 p-5 glow" id="pipelineWrap">
+          <div class="flex items-center justify-between mb-3">
+            <span class="font-mono text-xs text-slate-500">DECISION PIPELINE</span>
+            <span class="font-mono text-xs text-pos flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-pos animate-pulse"></span>live</span>
+          </div>
+          <svg id="pipeline" viewBox="0 0 520 220" class="w-full h-auto" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Animated decision pipeline: analysis, validation, execution">
+            <defs>
+              <linearGradient id="wire" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="#2e7dff"/><stop offset="50%" stop-color="#7db0ff"/><stop offset="100%" stop-color="#a855f7"/>
+              </linearGradient>
+              <filter id="soft"><feGaussianBlur stdDeviation="2.2"/></filter>
+            </defs>
+            <!-- stage labels -->
+            <text x="70" y="18" fill="#5c636e" font-family="'IBM Plex Mono',monospace" font-size="10" text-anchor="middle">ANALYSIS</text>
+            <text x="260" y="18" fill="#5c636e" font-family="'IBM Plex Mono',monospace" font-size="10" text-anchor="middle">VALIDATION</text>
+            <text x="450" y="18" fill="#5c636e" font-family="'IBM Plex Mono',monospace" font-size="10" text-anchor="middle">EXECUTION</text>
+            <!-- connecting wires (paths the pulse follows) -->
+            <path id="p-main" d="M40 110 H480" fill="none" stroke="#1a1e26" stroke-width="2"/>
+            <path d="M70 60 V160 M260 60 V160 M450 70 V150" stroke="#12151b" stroke-width="1.5"/>
+            <!-- nodes: analysis (5), validation (2), execution (3) -->
+            <g class="pnode" data-i="0"><circle cx="70" cy="60" r="9"/><text x="70" y="82">Conf</text></g>
+            <g class="pnode" data-i="1"><circle cx="40" cy="110" r="9"/><text x="40" y="132">Prob</text></g>
+            <g class="pnode" data-i="2"><circle cx="70" cy="160" r="9"/><text x="70" y="182">Regime</text></g>
+            <g class="pnode" data-i="3"><circle cx="110" cy="85" r="9"/><text x="110" y="52">Sim</text></g>
+            <g class="pnode" data-i="4"><circle cx="110" cy="135" r="9"/><text x="110" y="158">SMC</text></g>
+            <g class="pnode" data-i="5"><circle cx="240" cy="90" r="9"/><text x="240" y="66">Param</text></g>
+            <g class="pnode" data-i="6"><circle cx="280" cy="130" r="9"/><text x="280" y="153">Backtest</text></g>
+            <g class="pnode" data-i="7"><circle cx="430" cy="70" r="9"/><text x="430" y="52">Risk</text></g>
+            <g class="pnode" data-i="8"><circle cx="470" cy="110" r="9"/><text x="470" y="132">Guard</text></g>
+            <g class="pnode" data-i="9"><circle cx="440" cy="150" r="9"/><text x="440" y="172">Exec</text></g>
+            <!-- travelling pulse -->
+            <circle id="pulse" r="5" fill="url(#wire)" filter="url(#soft)"><animate attributeName="opacity" values="0.4;1;0.4" dur="1.2s" repeatCount="indefinite"/></circle>
+            <!-- verdict -->
+            <g id="verdictG" opacity="0">
+              <rect x="360" y="185" width="150" height="26" rx="6" fill="#1fbf75" fill-opacity="0.12" stroke="#1fbf75" stroke-opacity="0.4"/>
+              <text x="435" y="202" fill="#1fbf75" font-family="'IBM Plex Mono',monospace" font-size="11" text-anchor="middle">GO ✓ within limits</text>
+            </g>
+          </svg>
+          <style>
+            #pipeline .pnode circle { fill:#0b0d11; stroke:#2e7dff; stroke-opacity:.35; stroke-width:2; transition: all .3s; }
+            #pipeline .pnode text { fill:#5c636e; font-family:'IBM Plex Mono',monospace; font-size:9px; text-anchor:middle; transition: fill .3s; }
+            #pipeline .pnode.active circle { fill:#2e7dff; stroke:#7db0ff; stroke-opacity:1; }
+            #pipeline .pnode.active text { fill:#cbd5e1; }
+            #pipeline .pnode:hover circle { fill:#7db0ff; cursor:pointer; }
+          </style>
+        </div>
+      </div>
+
+      <!-- Analysis / Signal -->
+      <p class="mt-12 mb-4 font-mono text-xs text-mute">ANALYSIS &amp; SIGNAL</p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="14" cy="14" r="6" class="g1"/><circle cx="26" cy="14" r="6" class="g2"/><circle cx="20" cy="26" r="6" class="g3"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Confluence engine</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Acts only when multiple independent signals agree on the same read.</p>
+        </article>
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M4 30 Q14 6 20 20 T36 12" class="bell"/><line x1="4" y1="34" x2="36" y2="34"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Probability engine</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Scores each setup's statistical edge from the outcomes of similar past conditions.</p>
+        </article>
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polyline points="4,28 12,20 18,24 26,10 36,6" class="wave"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Market regime engine</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Classifies trend, range, and volatility so the rules adapt to the current market.</p>
+        </article>
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="16" cy="16" r="9" class="lens"/><line x1="23" y1="23" x2="34" y2="34"/><path d="M12 16h8M16 12v8" class="plus"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Similarity engine</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Matches the current situation to historical ones and checks how they resolved.</p>
+        </article>
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="6" y="14" width="8" height="12" rx="1" class="ob"/><rect x="26" y="10" width="8" height="16" rx="1" class="ob"/><line x1="20" y1="6" x2="20" y2="34" stroke-dasharray="2 3"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Smart Money Concepts</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Reads order blocks, liquidity, and market-structure breaks.</p>
+        </article>
+      </div>
+
+      <!-- Decision / Validation -->
+      <p class="mt-12 mb-4 font-mono text-xs text-mute">DECISION &amp; VALIDATION</p>
+      <div class="grid lg:grid-cols-3 gap-4">
+        <article class="engine-card reveal group rounded-xl border border-accent/40 bg-panel/70 p-6 lg:col-span-2 glow">
+          <div class="flex items-center gap-3">
+            <div class="eicon text-accent">
+              <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M14 4h12M17 4v10l-8 18a3 3 0 0 0 3 4h16a3 3 0 0 0 3-4l-8-18V4" class="flask"/><line x1="12" y1="26" x2="28" y2="26"/><circle cx="17" cy="30" r="1.4" class="bub"/><circle cx="23" cy="32" r="1.1" class="bub"/>
+              </svg>
+            </div>
+            <h3 class="font-display text-white text-lg font-medium">Parameter Testing engine</h3>
+          </div>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Every element of the strategy is tested before it is trusted. What gets tested:</p>
+          <ul class="mt-4 grid sm:grid-cols-2 gap-x-6 gap-y-2 text-sm text-slate-300">
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Indicator parameters</li>
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Risk thresholds</li>
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Similarity thresholds</li>
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Entry conditions</li>
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Stop-loss logic</li>
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Take-profit logic</li>
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Trade-management rules</li>
+            <li class="flex items-center gap-2"><span class="text-accent">▸</span> Market filters</li>
+          </ul>
+        </article>
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M6 20a14 14 0 1 1 4 10" class="dial"/><polyline points="6,30 6,20 16,20" /><path d="M20 12v8l6 4" class="hand"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Backtesting engine</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Runs the validated ruleset across up to five years of market data to measure behaviour across cycles.</p>
+        </article>
+      </div>
+
+      <!-- Risk / Execution -->
+      <p class="mt-12 mb-4 font-mono text-xs text-mute">RISK &amp; EXECUTION</p>
+      <div class="grid sm:grid-cols-3 gap-4">
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M20 5l13 5v9c0 8-5 12-13 16-8-4-13-8-13-16v-9z" class="shield"/><path d="M14 20l4 4 8-9" class="check"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Risk assessment engine</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Sets position size, stop distance, and reward-to-risk before you commit.</p>
+        </article>
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="20" cy="20" r="15" class="gauge"/><path d="M20 20l9-6" class="needle"/><circle cx="20" cy="20" r="2" fill="currentColor"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Risk filter &amp; guardrails</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Enforces daily loss limits, max trades, and maximum account exposure.</p>
+        </article>
+        <article class="engine-card reveal group rounded-xl border border-edge bg-panel/50 p-6 hover:border-accent/50 transition-colors">
+          <div class="eicon mb-4 text-accent">
+            <svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M22 4 8 24h10l-2 12 14-20H20z" class="bolt" fill="currentColor" fill-opacity="0.15"/>
+            </svg>
+          </div>
+          <h3 class="font-display text-white text-lg font-medium">Execution &amp; discipline</h3>
+          <p class="mt-2 text-sm text-slate-400 leading-relaxed">Holds you to the plan at entry — blocking revenge and oversized trades.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW TO USE -->
+  <section id="how-to-use" class="py-24 border-b border-edge">
+    <div class="mx-auto max-w-6xl px-5">
+      <div class="max-w-2xl reveal">
+        <p class="font-mono text-sm text-accent mb-3">How to use</p>
+        <h2 class="font-display text-white text-3xl sm:text-4xl font-semibold tracking-tight">Send a symbol. Get real-time analysis.</h2>
+        <p class="mt-4 text-slate-400">TDAi runs on Telegram. Open the bot, send any symbol, and the engines reply with a full read.</p>
+      </div>
+
+      <div class="mt-12 grid lg:grid-cols-2 gap-8 items-start">
+        <!-- steps + QR + button -->
+        <div class="space-y-4">
+          <ol class="space-y-4">
+            <li class="reveal flex gap-4 rounded-xl border border-edge bg-panel/50 p-5">
+              <span class="font-mono text-accent text-sm shrink-0 pt-0.5">01</span>
+              <div><h3 class="font-display text-white text-lg">Open the TDAi bot</h3><p class="mt-1 text-sm text-slate-400">Launch <span class="text-slate-200 font-mono">@TDAi_abot</span> on Telegram — scan the QR or tap the button.</p></div>
+            </li>
+            <li class="reveal flex gap-4 rounded-xl border border-edge bg-panel/50 p-5">
+              <span class="font-mono text-accent text-sm shrink-0 pt-0.5">02</span>
+              <div><h3 class="font-display text-white text-lg">Send a symbol</h3><p class="mt-1 text-sm text-slate-400">Type a market — e.g. <span class="text-slate-200 font-mono">XAUUSD</span>, <span class="text-slate-200 font-mono">EURUSD</span>, <span class="text-slate-200 font-mono">BTCUSD</span>.</p></div>
+            </li>
+            <li class="reveal flex gap-4 rounded-xl border border-edge bg-panel/50 p-5">
+              <span class="font-mono text-accent text-sm shrink-0 pt-0.5">03</span>
+              <div><h3 class="font-display text-white text-lg">Get real-time analysis</h3><p class="mt-1 text-sm text-slate-400">TDAi runs its engines and replies with confluence, probability, risk, and a clear go / no-go.</p></div>
+            </li>
+          </ol>
+          <div class="reveal flex flex-col sm:flex-row items-center gap-5 rounded-xl border border-edge bg-panel/50 p-5">
+            <img src="telegram_qr.png" alt="Scan to open @TDAi_abot on Telegram" class="w-32 h-auto rounded-lg bg-white p-1" />
+            <div class="text-center sm:text-left">
+              <p class="text-slate-300 text-sm">Scan to open the bot, or</p>
+              <a href="https://t.me/TDAi_abot" target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-2 rounded-md bg-accent text-white font-medium px-5 py-2.5 hover:bg-accentSoft transition-colors glow">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M9.8 15.6 9.6 19c.4 0 .6-.2.8-.4l1.9-1.8 3.9 2.8c.7.4 1.2.2 1.4-.7l2.6-12c.3-1.1-.4-1.6-1.1-1.3L2.9 9.9c-1.1.4-1 1-.2 1.3l4.3 1.3 9.9-6.2c.5-.3.9-.1.5.2z"/></svg>
+                Open @TDAi_abot
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- example reply -->
+        <div class="reveal rounded-xl border border-edge bg-panel/70 overflow-hidden glow">
+          <div class="flex items-center gap-2 px-4 py-3 border-b border-edge bg-ink/50">
+            <img src="brain_icon.png" alt="" class="w-8 h-8 object-contain" />
+            <span class="font-display text-white text-sm">TDAi bot</span>
+            <span class="ml-auto font-mono text-xs text-slate-500">live example</span>
+          </div>
+          <div class="p-4 space-y-3 text-sm">
+            <div class="max-w-[70%] ml-auto rounded-2xl rounded-br-sm bg-accent/20 border border-accent/30 px-4 py-2 text-slate-100 font-mono">XAUUSD</div>
+            <div class="max-w-[88%] rounded-2xl rounded-bl-sm bg-ink/60 border border-edge px-4 py-3 space-y-2 font-mono text-xs">
+              <div class="text-white text-sm font-display">📊 XAUUSD · 15m — SETUP: VALID</div>
+              <div class="flex justify-between"><span class="text-slate-400">Regime</span><span class="text-slate-200">Trending ↑</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Confluence</span><span class="text-pos">4 / 5 signals aligned</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Probability edge</span><span class="text-pos">68%</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">SMC</span><span class="text-slate-200">Bullish OB + liquidity sweep</span></div>
+              <div class="border-t border-edge my-1"></div>
+              <div class="flex justify-between"><span class="text-slate-400">Entry</span><span class="text-slate-200">2418.5</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Stop</span><span class="text-neg">2412.0</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Target</span><span class="text-pos">2434.0</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Risk / reward</span><span class="text-pos">2.4R</span></div>
+              <div class="flex justify-between"><span class="text-slate-400">Suggested size</span><span class="text-slate-200">1.2% of account</span></div>
+              <div class="border-t border-edge my-1"></div>
+              <div class="text-pos">✅ GO — all guardrails within limits</div>
+            </div>
+            <p class="text-[11px] text-mute font-mono">Illustrative example. Not financial advice.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA band -->
+  <section class="py-24">
+    <div class="mx-auto max-w-3xl px-5 text-center reveal">
+      <img src="brain_cut.png" alt="" class="w-40 h-auto object-contain mx-auto mb-6" />
+      <h2 class="font-display text-white text-3xl sm:text-4xl font-semibold tracking-tight">Analyze. Decide. Execute.</h2>
+      <p class="mt-4 text-slate-400">Put a disciplined decision engine between you and the market.</p>
+      <a href="https://t.me/TDAi_abot" target="_blank" rel="noopener" class="mt-8 inline-flex items-center gap-2 rounded-md bg-accent text-white font-medium px-7 py-3.5 hover:bg-accentSoft transition-colors glow">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M9.8 15.6 9.6 19c.4 0 .6-.2.8-.4l1.9-1.8 3.9 2.8c.7.4 1.2.2 1.4-.7l2.6-12c.3-1.1-.4-1.6-1.1-1.3L2.9 9.9c-1.1.4-1 1-.2 1.3l4.3 1.3 9.9-6.2c.5-.3.9-.1.5.2z"/></svg>
+        Open Telegram bot
+      </a>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="border-t border-edge">
+    <div class="mx-auto max-w-6xl px-5 py-12">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+        <div>
+          <div class="flex items-center gap-2.5">
+            <img src="brain_icon.png" alt="TDAi" class="w-9 h-9 object-contain" />
+            <span class="font-display font-semibold text-white text-lg">TD<span class="text-accent">Ai</span></span>
+          </div>
+          <p class="mt-3 text-sm text-mute">Trading Dream AI — Analyze. Decide. Execute.</p>
+        </div>
+        <div>
+          <p class="font-mono text-xs text-mute mb-3">PRODUCT</p>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#credibility" class="text-slate-400 hover:text-white transition-colors">Credibility</a></li>
+            <li><a href="#how-it-works" class="text-slate-400 hover:text-white transition-colors">How it works</a></li>
+            <li><a href="#how-to-use" class="text-slate-400 hover:text-white transition-colors">How to use</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-mono text-xs text-mute mb-3">CONNECT</p>
+          <ul class="space-y-2 text-sm">
+            <li><a href="https://t.me/TDAi_abot" target="_blank" rel="noopener" class="text-slate-400 hover:text-white transition-colors">Telegram — @TDAi_abot</a></li>
+            <li><a href="#" class="text-slate-400 hover:text-white transition-colors">Website (soon)</a></li>
+            <li><a href="#" class="text-slate-400 hover:text-white transition-colors">X / Instagram (soon)</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-mono text-xs text-mute mb-3">GET STARTED</p>
+          <a href="https://t.me/TDAi_abot" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-md bg-accent text-white font-medium px-4 py-2.5 hover:bg-accentSoft transition-colors text-sm">Open Telegram bot</a>
+        </div>
+      </div>
+      <div class="mt-10 pt-6 border-t border-edge">
+        <p class="text-xs text-mute leading-relaxed max-w-3xl">
+          <span class="text-slate-400 font-medium">Risk disclaimer:</span> Trading foreign exchange, cryptocurrencies, and other leveraged instruments carries a high level of risk and may not be suitable for all investors. Past performance and backtested results are not indicative of future results. TDAi is a decision-support and analysis tool only and does not constitute financial, investment, or trading advice. You are solely responsible for your own trading decisions and any resulting losses. Never trade with money you cannot afford to lose.
+        </p>
+        <p class="mt-4 text-xs text-mute">© <span id="year"></span> TDAi — Trading Dream AI. All rights reserved.</p>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
